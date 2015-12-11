@@ -2,14 +2,20 @@ package com.zarkonnen.parasiteescape;
 
 import java.awt.Canvas;
 import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.DisplayMode;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
 import java.util.Random;
+import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -75,12 +81,42 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 	int btn;
 	int my, mx;
 	BufferStrategy strategy;
+	
+	public static void main(String[] args) {
+		ParasiteEscape pe = new ParasiteEscape();
+		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+		boolean fullscreened = false;
+		for (DisplayMode dm : gd.getDisplayModes()) {
+			if (dm.getWidth() == 800 && dm.getHeight() == 600) {
+				try {
+					gd.setDisplayMode(dm);
+					fullscreened = true;
+					break;
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		if (fullscreened) {
+			gd.setFullScreenWindow(pe);
+		} else {
+			pe.setUndecorated(true);
+			pe.setVisible(true);
+			pe.setLocation(0, 0);
+			pe.setSize(gd.getDisplayMode().getWidth(), gd.getDisplayMode().getHeight());
+		}
+		pe.init();
+	}
 
 	public void init() {
+		getContentPane().setBackground(new Color(20, 20, 20));
+		getContentPane().setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+		getContentPane().setLayout(null);
 		setIgnoreRepaint(true);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		Canvas canvas = new Canvas();
 		add(canvas);
-		canvas.setBounds(0, 0, 800, 600);
+		canvas.setBounds(getWidth() / 2 - 400, getHeight() / 2 - 300, 800, 600);
 		canvas.createBufferStrategy(2);
 		strategy = canvas.getBufferStrategy();
 		canvas.addKeyListener(this);
@@ -164,6 +200,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 	private boolean victory;
 	private int difficulty = 1;
 	Random r = new Random();
+	BufferedImage instructions = null;
 
 	private void play(int start, int end, int samps, float rate, int vol) {
 		byte[] sample = new byte[samps];
@@ -344,6 +381,11 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 
 	@Override
 	public void run() {
+		try {
+			instructions = ImageIO.read(ParasiteEscape.class.getResourceAsStream("instructions.png"));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		int level = 0;
 		String levelUnits
 				= "43704100" + "46704100" + "56802500" + "46801300" + "00000000" + "00000000"
@@ -372,6 +414,10 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 			}
 			int tick = 0;
 			while (true) {
+				if (key[KeyEvent.VK_ESCAPE]) {
+					Runtime.getRuntime().exit(0);
+					return;
+				}
 				tick++;
 				// Music
 				if (tick % 32 == 16) {
@@ -795,9 +841,6 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 					}
 				}
 
-				g.setColor(Color.RED);
-				g.fillRect(mx, my, 2, 2);
-
 				if (paused) {
 					g.setColor(new Color(0, 0, 0, 127));
 					g.fillRect(0, 0, 800, 600);
@@ -807,12 +850,14 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 						g.drawString("VICTORY", 2, 30);
 						g.scale(0.125, 0.125);
 						g.drawString("Hard mode enabled!", 16, 300);
+					} else {
+						g.drawImage(instructions, 0, 0, null);
 					}
 				}
 
 				strategy.show();
 				try {
-					Thread.sleep(25);
+					Thread.sleep(20);
 				} catch (Exception e) {
 				}
 			}
