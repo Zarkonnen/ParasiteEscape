@@ -4,3 +4,4 @@ manifest.mf
 lib
 nbproject
 /build/
+/dist/

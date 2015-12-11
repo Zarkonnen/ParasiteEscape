@@ -16,10 +16,6 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.util.Random;
 import javax.imageio.ImageIO;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.DataLine;
 import javax.swing.JFrame;
 
 /**
@@ -29,7 +25,22 @@ import javax.swing.JFrame;
  * @author David Stark
  */
 public class ParasiteEscape extends JFrame implements Runnable, KeyListener, MouseListener, MouseMotionListener {
-
+	public static final Color DARK_GREY = new Color(30, 30, 30);
+	public static final Color DARKISH_GREY = new Color(50, 50, 50);
+	public static final Color DARKER_GREY = new Color(20, 20, 20);
+	public static final Color BOX_A = new Color(62, 50, 28);
+	public static final Color BOX_B = new Color(99, 83, 56);
+	public static final Color DOOR_RED = new Color(180, 50, 50);
+	public static final Color TANK_A = new Color(70, 70, 90);
+	public static final Color TANK_B = new Color(70, 170, 200);
+	public static final Color TANK_C = new Color(56, 112, 120);
+	public static final Color TANK_D = new Color(255, 255, 255, 30);
+	public static final Color UNIFORM = new Color(99, 121, 77);
+	public static final Color INVISIBLE = new Color(0, 0, 0, 0);
+	public static final Color GREY_OVERLAY = new Color(0, 0, 0, 127);
+	public static final Color PIPE_DETAIL = new Color(255, 255, 255, 30);
+	public static final Color SKIN = new Color(208, 169, 130);
+	
 	@Override
 	public void keyTyped(KeyEvent e) {
 	}
@@ -81,6 +92,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 	int btn;
 	int my, mx;
 	BufferStrategy strategy;
+	AudioThread at = new AudioThread();
 	
 	public static void main(String[] args) {
 		ParasiteEscape pe = new ParasiteEscape();
@@ -107,9 +119,13 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 		}
 		pe.init();
 	}
+	
+	private void play(int start, int end, int samps, float rate, float vol) {
+		at.addRequest(new AudioThread.AudioRequest(start, end, samps, rate, vol));
+	}
 
 	public void init() {
-		getContentPane().setBackground(new Color(20, 20, 20));
+		getContentPane().setBackground(DARKER_GREY);
 		getContentPane().setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 		getContentPane().setLayout(null);
 		setIgnoreRepaint(true);
@@ -123,6 +139,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 		canvas.addMouseListener(this);
 		canvas.addMouseMotionListener(this);
 		new Thread(this).start();
+		new Thread(at).start();
 	}
 
 	private static final int UNARMED = -1;
@@ -171,19 +188,19 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 	private static final int RED_DOOR = 0xc;
 	private static final int TANK = 0xf;
 
-	private static final double GRAVITY = 0.025f;
+	private static final double GRAVITY = 0.0125f;
 	private static final int U_PER_L = 6;
 	private static final int NUM_LEVELS = 6;
 
-	private int[] types = {
+	private final int[] types = {
 		0, 0, 0,// 0
 		0, 0, 0,// 1
 		0, 0, 0,// 2
 		0, 0, 0,// 3
 		12, 22, UNARMED,// dude 4
-		12, 22, 180,// grunt 5
-		12, 22, 55,// officer 6
-		12, 22, 80,// battle armor
+		12, 22, 360,// grunt 5
+		12, 22, 110,// officer 6
+		12, 22, 160,// battle armor
 		1, 1, 0,// bullet 8
 		1, 1, 0,// psiblast 9
 		1, 1, 0,// look 10
@@ -202,33 +219,6 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 	Random r = new Random();
 	BufferedImage instructions = null;
 
-	private void play(int start, int end, int samps, float rate, int vol) {
-		byte[] sample = new byte[samps];
-		try {
-			int i = 0;
-			lp:
-			while (true) {
-				for (int x = start; x < end; x++) {
-					i++;
-					if (i == samps) {
-						break lp;
-					}
-					sample[i] = (byte) (levelMaps.charAt(x) * vol / 4);
-					if (i > samps - 200) {
-						sample[i] = (byte) (sample[i] * (samps - i) / 200);
-					}
-				}
-			}
-			// Initialise Sound System
-			AudioFormat audioFormat = new AudioFormat(rate, 8, 1, true, true);
-			DataLine.Info info = new DataLine.Info(Clip.class, audioFormat);
-			Clip snd = (Clip) AudioSystem.getLine(info);
-			snd.open(audioFormat, sample, 0, sample.length);
-			snd.start();
-		} catch (Exception e) {
-		}
-	}
-
 	private int findEmpty() {
 		for (int i = 0; i < NUM_UNITS; i++) {
 			if (unit_i[i * I_STRIDE + TYPE] == 0) {
@@ -245,8 +235,8 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 			unit_i[i * I_STRIDE + FLOOR] = 1;
 			unit_f[i * F_STRIDE + X] = x;
 			unit_f[i * F_STRIDE + Y] = y;
-			unit_f[i * F_STRIDE + DX] = r.nextDouble() * 2 - 1;
-			unit_f[i * F_STRIDE + DY] = r.nextDouble() * 2 - 1;
+			unit_f[i * F_STRIDE + DX] = r.nextDouble() - 0.5;
+			unit_f[i * F_STRIDE + DY] = r.nextDouble() - 0.5;
 		}
 	}
 
@@ -263,8 +253,8 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 		unit_i[i * I_STRIDE + FLOOR] = 1;
 		unit_f[i * F_STRIDE + X] = unit_f[u * F_STRIDE + X] + dx * 16 / dist;
 		unit_f[i * F_STRIDE + Y] = unit_f[u * F_STRIDE + Y] + dy * 16 / dist;
-		unit_f[i * F_STRIDE + DX] = dx * 9.0f / dist;
-		unit_f[i * F_STRIDE + DY] = dy * 9.0f / dist + unit_f[u * F_STRIDE + DY];
+		unit_f[i * F_STRIDE + DX] = dx * 4.5f / dist;
+		unit_f[i * F_STRIDE + DY] = dy * 4.5f / dist + unit_f[u * F_STRIDE + DY];
 		unit_i[u * I_STRIDE + RELOAD] = reload;
 		unit_i[i * I_STRIDE + LOOK_STATUS] = u;
 		if (type == BULLET) {
@@ -287,7 +277,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 		return false;
 	}
 
-	String levelMaps
+	public static final String levelMaps
 			= "aaaaaaaaaaaaaaaaaaaa"
 			+ "a000000040040000004a"
 			+ "a000000040040000004a"
@@ -396,6 +386,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 				+ "40502100" + "56202100" + "77002100" + "44203701" + "65005300" + "71005300";
 		game:
 		while (true) {
+			System.gc();
 			boolean paused = true;
 			controlledUnit = 0;
 			unit_i = new int[I_STRIDE * NUM_UNITS];
@@ -414,6 +405,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 			}
 			int tick = 0;
 			while (true) {
+				long startTickNanos = System.nanoTime();
 				if (key[KeyEvent.VK_ESCAPE]) {
 					Runtime.getRuntime().exit(0);
 					return;
@@ -421,10 +413,10 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 				tick++;
 				// Music
 				if (tick % 32 == 16) {
-					play(0, 40, 1000 * (tick % (2 + level) + 1), 3000f * (tick % (2 + level) + 1), 1);
+					play(0, 40, 1000 * (tick % (2 + level) + 1), 3000f * (tick % (2 + level) + 1), 0.5f);
 				}
 				if (tick % 32 == 0) {
-					play(0, 40, 2000 * (tick % (17 % (level + 2) + 2) + 2), 6000f * (tick % (17 % (level + 2) + 2) + 2), 1);
+					play(0, 40, 2000 * (tick % (17 % (level + 2) + 2) + 2), 6000f * (tick % (17 % (level + 2) + 2) + 2), 0.5f);
 				}
 
 				if (paused && click) {
@@ -441,13 +433,13 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 					if (unit_i[controlledUnit * I_STRIDE + FLOOR] < 30) {
 						unit_f[controlledUnit * F_STRIDE + DX] = 0;
 						if (key[KeyEvent.VK_A] || key[KeyEvent.VK_LEFT]) {
-							unit_f[controlledUnit * F_STRIDE + DX] = -.625f;
+							unit_f[controlledUnit * F_STRIDE + DX] = -.31f;
 						}
 						if (key[KeyEvent.VK_D] || key[KeyEvent.VK_RIGHT]) {
-							unit_f[controlledUnit * F_STRIDE + DX] = .625f;
+							unit_f[controlledUnit * F_STRIDE + DX] = .31f;
 						}
 						if (key[KeyEvent.VK_W] || key[KeyEvent.VK_UP]) {
-							unit_f[controlledUnit * F_STRIDE + DY] = -1.1f;
+							unit_f[controlledUnit * F_STRIDE + DY] = -0.65f;
 						}
 					}
 					if ((types[unit_i[controlledUnit * I_STRIDE + TYPE] * T_STRIDE + LOOK_FREQ] != UNARMED || btn == 3 || key[KeyEvent.VK_E]) && (click || key[KeyEvent.VK_E]) && unit_i[controlledUnit * I_STRIDE + RELOAD] <= 0) {
@@ -471,7 +463,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 							unit_i[u * I_STRIDE + FLOOR]++;
 							// Floor
 							if (unit_f[u * F_STRIDE + DY] > 0 && (map[bottom][left] >= SOLIDITY_BOUNDARY || map[bottom][right] >= SOLIDITY_BOUNDARY)) {
-								if (unit_f[u * F_STRIDE + DY] > 3) {
+								if (unit_f[u * F_STRIDE + DY] > 1.5) {
 									if (unit_i[u * I_STRIDE + TYPE] / GROUP_DIV == PEOPLE_GROUP) {
 										play(953, 1382, 1000, 2000f, 12);
 										splash(unit_f[u * F_STRIDE + X] + 6, unit_f[u * F_STRIDE + Y] + 11, BLOOD);
@@ -613,7 +605,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								g.fillRect(tx + 3, ty, 34, 40);
 								// Left
 								if (x > 0 && map[y][x - 1] != WALL) {
-									g.setColor(new Color(30, 30, 30));
+									g.setColor(DARK_GREY);
 									g.fillRect(tx + 3, ty, 3, 40);
 									for (int l = 0; l < 40; l += 8) {
 										g.fillOval(tx - 2, ty + l, 6, 6);
@@ -624,7 +616,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								}
 								// Right
 								if (x < 19 && map[y][x + 1] != WALL) {
-									g.setColor(new Color(30, 30, 30));
+									g.setColor(DARK_GREY);
 									g.fillRect(tx + 35, ty, 3, 40);
 									for (int l = 0; l < 40; l += 8) {
 										g.fillOval(tx + 35, ty + l, 6, 6);
@@ -637,7 +629,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 							case PRE_DOOR:
 								g.setColor(Color.WHITE);
 								g.fillRoundRect(tx + 1, ty + 1, 38, 38, 10, 10);
-								g.setColor(new Color(50, 50, 50));
+								g.setColor(DARKISH_GREY);
 								g.fillRoundRect(tx + 4, ty + 4, 32, 32, 10, 10);
 								break;
 							case LVL_DOOR:
@@ -654,12 +646,12 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								g.drawString("" + (level + 1), tx + 7, ty + 18);
 								break;
 							case SPACE_WINDOW:
-								g.setColor(new Color(35, 35, 35));
+								g.setColor(DARK_GREY);
 								g.fillRect(tx, ty, 40, 40);
 								g.setColor(Color.BLACK);
 								g.fillRoundRect(tx + 1, ty + 1, 38, 38, 10, 10);
 								r.setSeed(x + y * y);
-								for (int s = 0; s < 40; s++) {
+								for (int s = 0; s < 30; s++) {
 									g.setColor(r.nextBoolean() ? Color.LIGHT_GRAY : Color.GRAY);
 									g.fillRect(tx + 2 + r.nextInt(36), ty + 2 + r.nextInt(36), 1, 1);
 								}
@@ -671,16 +663,16 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								for (int p = 0; p < 40; p += 4) {
 									g.fillRect(tx + 11, ty + p, 18, 1);
 								}
-								g.setColor(new Color(255, 255, 255, 30));
+								g.setColor(PIPE_DETAIL);
 								g.fillRect(tx + 14, ty, 5, 40);
 								g.fillRect(tx + 15, ty, 2, 40);
 								break;
 							case BOX:
-								g.setColor(new Color(62, 50, 28));
+								g.setColor(BOX_A);
 								g.fillRoundRect(tx, ty, 40, 40, 10, 10);
-								g.setColor(new Color(99, 83, 56));
+								g.setColor(BOX_B);
 								g.fillRoundRect(tx + 2, ty + 2, 36, 36, 10, 10);
-								g.setColor(new Color(62, 50, 28));
+								g.setColor(BOX_A);
 								for (int b = 1; b < 6; b++) {
 									g.fillRect(tx + 2, ty + 2 + b * 6, 36, 1);
 								}
@@ -709,7 +701,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								if (anim[y][x] > 0 && ++anim[y][x] == 38) {
 									map[y][x] = 0;
 								}
-								g.setColor(new Color(180, 50, 50));
+								g.setColor(DOOR_RED);
 								g.fillRect(tx + 5, ty, 30, 3);
 								g.fillRect(tx + 5, ty + 37, 30, 3);
 								break;
@@ -742,11 +734,11 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 							case TANK:
 								g.setColor(Color.LIGHT_GRAY);
 								g.fillRect(tx + 8, ty, 24, 40);
-								g.setColor(new Color(70, 70, 90));
+								g.setColor(TANK_A);
 								g.fillRect(tx + 10, ty + 2, 20, 30);
-								g.setColor(new Color(70, 170, 200));
+								g.setColor(TANK_B);
 								g.fillRect(tx + 10, ty + 6, 20, 26);
-								g.setColor(new Color(56, 112, 120));
+								g.setColor(TANK_C);
 								// Head
 								g.fillOval(tx + 17, ty + 8 + (tick / 50) % 2, 6, 6);
 								// Torso
@@ -757,7 +749,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 								// Legs
 								g.fillRect(tx + 17, ty + 22 + (tick / 50) % 2, 2, 8);
 								g.fillRect(tx + 20, ty + 22 + (tick / 50) % 2, 2, 8);
-								g.setColor(new Color(255, 255, 255, 30));
+								g.setColor(TANK_D);
 								g.fillRect(tx + 14, ty, 5, 40);
 								g.fillRect(tx + 15, ty, 2, 40);
 								break;
@@ -770,14 +762,14 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 					int uy = (int) unit_f[u * F_STRIDE + Y];
 					switch (unit_i[u * I_STRIDE + TYPE] / GROUP_DIV) {
 						case PEOPLE_GROUP:
-							g.setColor(new Color(208, 169, 130));
+							g.setColor(SKIN);
 							g.fillOval(ux + 3, uy, 6, 6);
 							switch (unit_i[u * I_STRIDE + TYPE]) {
 								case DUDE:
 									g.setColor(Color.WHITE);
 									break;
 								case GRUNT:
-									g.setColor(new Color(99, 121, 77));
+									g.setColor(UNIFORM);
 									break;
 								case OFFICER:
 									g.setColor(Color.BLACK);
@@ -805,7 +797,11 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 							}
 							if (u == controlledUnit) {
 								g.setColor(Color.GREEN);
-								g.fillOval(ux + 5, uy + 7, 3 + ((tick / 7) % 3), 8);
+								if (unit_i[controlledUnit * I_STRIDE + RELOAD] <= 0) {
+									g.fillOval(ux + 5, uy + 7, 3 + ((tick / 7) % 3), 8);
+								} else {
+									g.fillOval(ux + 5, uy + 8, 3, 6);
+								}
 							}
 							if (unit_i[u * I_STRIDE + LOOK_STATUS] > 0) {
 								g.setColor(Color.YELLOW);
@@ -822,7 +818,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 									g.setColor(Color.GREEN);
 									break;
 								case LOOK:
-									g.setColor(new Color(0, 0, 0, 0));
+									g.setColor(INVISIBLE);
 									break;
 							}
 							g.fillRect(ux - 2, uy - 2, 5, 5);
@@ -842,7 +838,7 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 				}
 
 				if (paused) {
-					g.setColor(new Color(0, 0, 0, 127));
+					g.setColor(GREY_OVERLAY);
 					g.fillRect(0, 0, 800, 600);
 					if (victory) {
 						g.setColor(Color.WHITE);
@@ -856,9 +852,16 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 				}
 
 				strategy.show();
-				try {
-					Thread.sleep(20);
-				} catch (Exception e) {
+				long nt = System.nanoTime();
+				while ((nt = System.nanoTime()) < startTickNanos + 1000000000 / 60) {
+					// Just spin.
+					if (startTickNanos + 6000000 < nt) {
+						try {
+							Thread.sleep(5);
+						} catch (Exception e) {
+							// Ignore
+						}
+					}
 				}
 			}
 		}
