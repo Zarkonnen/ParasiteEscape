@@ -1,3 +1,5 @@
+package com.zarkonnen.parasiteescape;
+
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -7,15 +9,19 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
-import javax.swing.JApplet;
 import java.util.Random;
-
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.DataLine;
+import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.swing.JFrame;
 
-public class a extends JApplet implements Runnable, KeyListener, MouseListener, MouseMotionListener {
+/**
+ * A Java4k game about escaping a space base through parasitic possession.
+ * Copyright David Stark 2015.
+ * @author David Stark
+ */
+public class ParasiteEscape extends JFrame implements Runnable, KeyListener, MouseListener, MouseMotionListener {
   @Override
   public void keyTyped(KeyEvent e) {}
   @Override
@@ -54,7 +60,6 @@ public class a extends JApplet implements Runnable, KeyListener, MouseListener, 
   int my, mx;
   BufferStrategy strategy;
   
-  @Override
   public void init() {
     setIgnoreRepaint(true);
     Canvas canvas = new Canvas();
