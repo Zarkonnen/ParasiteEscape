@@ -12,6 +12,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowStateListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.util.Random;
@@ -116,6 +118,11 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 			pe.setVisible(true);
 			pe.setLocation(0, 0);
 			pe.setSize(gd.getDisplayMode().getWidth(), gd.getDisplayMode().getHeight());
+		}
+		try {
+			Thread.sleep(1000);
+		} catch (Exception e) {
+			
 		}
 		pe.init();
 	}
@@ -855,9 +862,9 @@ public class ParasiteEscape extends JFrame implements Runnable, KeyListener, Mou
 				long nt = System.nanoTime();
 				while ((nt = System.nanoTime()) < startTickNanos + 1000000000 / 60) {
 					// Just spin.
-					if (startTickNanos + 6000000 < nt) {
+					if (startTickNanos + 1500000 < nt) {
 						try {
-							Thread.sleep(5);
+							Thread.sleep(1);
 						} catch (Exception e) {
 							// Ignore
 						}
